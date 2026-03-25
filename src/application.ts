@@ -4,7 +4,9 @@ import {WebSocket} from 'ws';
 export class Application {
   private path = '';
 
-  constructor() {}
+  constructor(
+    private readonly WSS = process.env.WSS
+  ) {}
 
   public init = async () => {
     await SerialPort.list()
@@ -25,21 +27,26 @@ export class Application {
   };
 
   public startServer = () => {
-    if (this.path) {
-      const port = new SerialPort({path: this.path, baudRate: 9600});
-      const socket = new WebSocket('ws://localhost:2305');
-
-      socket.onopen = () => {
-        port.on('data', (data) => {
-          const portData = data.toString('utf8');
-
-          console.log(portData);
-
-          socket.send(JSON.stringify({portData}));
-        });
-      };
-    } else {
+    if (!this.path) {
       console.log('Порт не инициализирован');
+      return;
     }
+    if (!this.WSS) {
+      console.log('Не указан webSocket сервер');
+      return;
+    }
+
+    const port = new SerialPort({path: this.path, baudRate: 9600});
+    const socket = new WebSocket(this.WSS);
+
+    socket.onopen = () => {
+      port.on('data', async (data) => {
+        const portData = data.toString('utf8');
+
+        console.log(JSON.stringify({portData}));
+
+        socket.send(JSON.stringify({portData}));
+      });
+    };
   };
 }
